@@ -1,6 +1,6 @@
 import Parser from 'rss-parser';
 
-type TimeFilter = 'today' | 'week' | 'month';
+export type TimeFilter = 'today' | 'week' | 'month';
 export type FactorType = 'macro' | 'micro';
 export type Sentiment = 'bullish' | 'bearish' | 'neutral';
 
@@ -9,9 +9,7 @@ export interface Story {
     title: string;
     link: string;
     domain: string;
-    points: number;
     timeAgo: string;
-    commentsInt: number;
     factor: FactorType;
     sentiment: Sentiment;
     impactLabel: string;
@@ -85,13 +83,17 @@ function classifyStory(title: string): { factor: FactorType, sentiment: Sentimen
 
 export type Country = 'us' | 'cn' | 'jp' | 'de' | 'in';
 
-export async function fetchFinanceNews(country: Country = 'us'): Promise<Story[]> {
+export async function fetchFinanceNews(country: Country = 'us', time: TimeFilter = 'today'): Promise<Story[]> {
     try {
-        let url = 'https://finance.yahoo.com/news/rssindex';
-        if (country === 'cn') url = 'https://news.google.com/rss/search?q=china+economy+finance+market+when:1d&hl=en-US&gl=US&ceid=US:en';
-        if (country === 'jp') url = 'https://news.google.com/rss/search?q=japan+economy+finance+market+when:1d&hl=en-US&gl=US&ceid=US:en';
-        if (country === 'de') url = 'https://news.google.com/rss/search?q=germany+economy+finance+market+when:1d&hl=en-US&gl=US&ceid=US:en';
-        if (country === 'in') url = 'https://news.google.com/rss/search?q=india+economy+finance+market+when:1d&hl=en-US&gl=US&ceid=US:en';
+        let timeQuery = '1d';
+        if (time === 'week') timeQuery = '7d';
+        if (time === 'month') timeQuery = '30d';
+
+        let url = `https://news.google.com/rss/search?q=US+economy+finance+market+when:${timeQuery}&hl=en-US&gl=US&ceid=US:en`;
+        if (country === 'cn') url = `https://news.google.com/rss/search?q=china+economy+finance+market+when:${timeQuery}&hl=en-US&gl=US&ceid=US:en`;
+        if (country === 'jp') url = `https://news.google.com/rss/search?q=japan+economy+finance+market+when:${timeQuery}&hl=en-US&gl=US&ceid=US:en`;
+        if (country === 'de') url = `https://news.google.com/rss/search?q=germany+economy+finance+market+when:${timeQuery}&hl=en-US&gl=US&ceid=US:en`;
+        if (country === 'in') url = `https://news.google.com/rss/search?q=india+economy+finance+market+when:${timeQuery}&hl=en-US&gl=US&ceid=US:en`;
 
         const feed = await parser.parseURL(url);
 
@@ -99,18 +101,12 @@ export async function fetchFinanceNews(country: Country = 'us'): Promise<Story[]
         const stories: Story[] = feed.items.slice(0, 30).map((item, index) => {
             const cls = classifyStory(item.title || '');
 
-            // Simulate "points" and "comments" for the HN look
-            const mockPoints = Math.floor(Math.random() * 500) + 50;
-            const mockComments = Math.floor(Math.random() * 200) + 10;
-
             return {
                 id: item.guid ? `${item.guid}-${index}` : String(index),
                 title: item.title || 'Untitled',
                 link: item.link || '#',
                 domain: getDomain(item.link || '#'),
-                points: mockPoints,
                 timeAgo: item.isoDate ? timeSince(item.isoDate) : 'recently',
-                commentsInt: mockComments,
                 factor: cls.factor,
                 sentiment: cls.sentiment,
                 impactLabel: cls.impactLabel,

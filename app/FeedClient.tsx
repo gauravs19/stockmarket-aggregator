@@ -1,24 +1,27 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
-import type { Story, Sentiment } from '../lib/feed';
-
-type TimeFilter = 'today' | 'week' | 'month';
+import { useSearchParams, useRouter } from 'next/navigation';
+import type { Story, Sentiment, TimeFilter } from '../lib/feed';
 
 export default function FeedClient({ initialStories }: { initialStories: Story[] }) {
-    const [timeFilter, setTimeFilter] = useState<TimeFilter>('today');
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    const typeFilter = searchParams.get('type') || 'all';
+    const timeFilter = searchParams.get('time') || 'today';
+    const currentCountry = searchParams.get('country') || 'us';
+
     const [stories, setStories] = useState<Story[]>(initialStories);
     const [aiLoading, setAiLoading] = useState(false);
     const [aiProgress, setAiProgress] = useState<string>('');
+    const [briefing, setBriefing] = useState<string>('');
+    const [generatingBriefing, setGeneratingBriefing] = useState<boolean>(false);
     const processedCount = useRef<number>(0);
 
     // Create a reference to the worker object.
     const worker = useRef<Worker | null>(null);
 
     useEffect(() => {
-        // Update local state when server data changes (e.g. new country selected)
-        setStories(initialStories);
-
         // We only initiate the worker on the client side
         if (!worker.current) {
             worker.current = new Worker(new URL('./worker.ts', import.meta.url), {
@@ -33,57 +36,79 @@ export default function FeedClient({ initialStories }: { initialStories: Story[]
         }
 
         const onMessageReceived = (e: MessageEvent) => {
-            const { status, id, label, data } = e.data;
+            const { status, action, id, label, data, summary } = e.data;
 
             if (status === 'progress') {
-                if (data.status === 'initiate') {
-                    setAiProgress('Initiating AI Model download...');
-                } else if (data.status === 'download') {
-                    setAiProgress(`Downloading ${data.file}...`);
-                } else if (data.status === 'progress') {
-                    setAiProgress(`Downloading... (${Math.round(data.progress || 0)}%)`);
-                } else if (data.status === 'done') {
-                    setAiProgress('Download complete! Loading into memory...');
-                } else if (data.status === 'ready') {
-                    setAiProgress('AI Model Ready. Processing Feed...');
+                if (action === 'classify') {
+                    if (data.status === 'initiate') {
+                        setAiProgress('Initiating Classifier download...');
+                    } else if (data.status === 'download') {
+                        setAiProgress(`Downloading ${data.file}...`);
+                    } else if (data.status === 'progress') {
+                        setAiProgress(`Downloading Classifier... (${Math.round(data.progress || 0)}%)`);
+                    } else if (data.status === 'done') {
+                        setAiProgress('Download complete! Loading into memory...');
+                    } else if (data.status === 'ready') {
+                        setAiProgress('Classifier Ready. Processing Feed...');
+                    }
+                    setAiLoading(true);
+                } else if (action === 'summarize') {
+                    if (data.status === 'initiate') {
+                        setAiProgress('Initiating Summarization Model...');
+                    } else if (data.status === 'download') {
+                        setAiProgress(`Downloading ${data.file}...`);
+                    } else if (data.status === 'progress') {
+                        setAiProgress(`Downloading Summarizer... (${Math.round(data.progress || 0)}%)`);
+                    } else if (data.status === 'done') {
+                        setAiProgress('Summarizer loaded!');
+                    } else if (data.status === 'ready') {
+                        setAiProgress('Drafting Executive Brief...');
+                    }
+                    setGeneratingBriefing(true);
                 }
-                setAiLoading(true);
             } else if (status === 'complete') {
-                // Output from Xenova/distilbert-base-uncased-finetuned-sst-2-english is "POSITIVE" or "NEGATIVE"
-                setStories(prev => {
-                    const newStories = prev.map(s => {
-                        if (s.id === id) {
-                            // Map standard sentiment logic to AI Output
-                            let newSentiment: Sentiment = 'neutral';
-                            if (label === 'POSITIVE') newSentiment = 'bullish';
-                            if (label === 'NEGATIVE') newSentiment = 'bearish';
+                if (action === 'classify') {
+                    // Output from Xenova/distilbert-base-uncased-finetuned-sst-2-english is "POSITIVE" or "NEGATIVE"
+                    setStories(prev => {
+                        const newStories = prev.map(s => {
+                            if (s.id === id) {
+                                // Map standard sentiment logic to AI Output
+                                let newSentiment: Sentiment = 'neutral';
+                                if (label === 'POSITIVE') newSentiment = 'bullish';
+                                if (label === 'NEGATIVE') newSentiment = 'bearish';
 
-                            return {
-                                ...s,
-                                sentiment: newSentiment,
-                                impactLabel: 'AI Tagged: ' + label
-                            };
-                        }
-                        return s;
+                                return {
+                                    ...s,
+                                    sentiment: newSentiment,
+                                    impactLabel: 'AI Tagged: ' + label
+                                };
+                            }
+                            return s;
+                        });
+
+                        return newStories;
                     });
 
-                    return newStories;
-                });
+                    processedCount.current += 1;
 
-                processedCount.current += 1;
-
-                if (processedCount.current >= initialStories.length) {
-                    setAiProgress('✨ All Stories Analyzed!');
-                    setTimeout(() => {
-                        setAiLoading(false);
-                        setAiProgress('');
-                    }, 3000);
-                } else {
-                    setAiProgress(`Analyzing Feed... (${processedCount.current}/${initialStories.length})`);
+                    if (processedCount.current >= initialStories.length) {
+                        setAiProgress('✨ All Stories Analyzed!');
+                        setTimeout(() => {
+                            setAiLoading(false);
+                            setAiProgress('');
+                        }, 3000);
+                    } else {
+                        setAiProgress(`Analyzing Feed... (${processedCount.current}/${initialStories.length})`);
+                    }
+                } else if (action === 'summarize') {
+                    setBriefing(summary);
+                    setGeneratingBriefing(false);
+                    setAiProgress('');
                 }
             } else if (status === 'error') {
                 console.error("AI Error:", e.data.error);
-                setAiLoading(false);
+                if (action === 'classify') setAiLoading(false);
+                if (action === 'summarize') setGeneratingBriefing(false);
                 setAiProgress('');
             }
         };
@@ -102,50 +127,109 @@ export default function FeedClient({ initialStories }: { initialStories: Story[]
             setAiProgress('Waking up AI Engine...');
             processedCount.current = 0;
             stories.forEach(story => {
-                worker.current?.postMessage({ id: story.id, text: story.title });
+                worker.current?.postMessage({ action: 'classify', id: story.id, text: story.title });
             });
-        } else {
-            console.error('Worker not initialized!');
-            setAiLoading(true);
-            setAiProgress('Error: AI environment failed to boot.');
-            setTimeout(() => setAiLoading(false), 3000);
+        }
+    };
+
+    const runAISummary = () => {
+        if (worker.current) {
+            console.log('Dispatching feed string to Web Worker for summarization...');
+            setGeneratingBriefing(true);
+            setAiProgress('Waking up AI Summarizer...');
+
+            // We only summarize top 10 items to save memory/speed, and concat their titles
+            const contextText = stories.slice(0, 10).map(s => s.title).join(". ");
+            worker.current.postMessage({ action: 'summarize', text: contextText });
         }
     };
 
     const displayedStories = useMemo(() => {
-        return stories;
-    }, [stories, timeFilter]);
+        let filtered = stories;
+        if (typeFilter === 'macro') {
+            filtered = filtered.filter(s => s.factor === 'macro');
+        } else if (typeFilter === 'micro') {
+            filtered = filtered.filter(s => s.factor === 'micro');
+        }
+        return filtered;
+    }, [stories, timeFilter, typeFilter]);
 
     return (
         <>
             <div className="time-filter" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', gap: '20px' }}>
-                    <button className={timeFilter === 'today' ? 'active' : ''} onClick={() => setTimeFilter('today')}>Trending Today</button>
-                    <button className={timeFilter === 'week' ? 'active' : ''} onClick={() => setTimeFilter('week')}>This Week</button>
-                    <button className={timeFilter === 'month' ? 'active' : ''} onClick={() => setTimeFilter('month')}>This Month</button>
+                    <button className={timeFilter === 'today' ? 'active' : ''} onClick={() => router.push(`/?country=${currentCountry}&type=${typeFilter}&time=today`)}>Trending Today</button>
+                    <button className={timeFilter === 'week' ? 'active' : ''} onClick={() => router.push(`/?country=${currentCountry}&type=${typeFilter}&time=week`)}>This Week</button>
+                    <button className={timeFilter === 'month' ? 'active' : ''} onClick={() => router.push(`/?country=${currentCountry}&type=${typeFilter}&time=month`)}>This Month</button>
                 </div>
 
-                <button
-                    onClick={runAITagging}
-                    disabled={aiLoading}
-                    style={{
-                        backgroundColor: aiLoading ? '#30363d' : '#8957e5',
-                        color: '#fff',
-                        border: 'none',
-                        padding: '6px 12px',
-                        borderRadius: '4px',
-                        cursor: aiLoading ? 'not-allowed' : 'pointer',
-                        fontWeight: 'bold',
-                        transition: 'background-color 0.2s',
-                        minWidth: '320px',
-                        textAlign: 'center'
-                    }}
-                >
-                    {aiLoading ? (aiProgress || 'AI Processing...') : '✨ Run AI Sentiment Analysis (Free)'}
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    {aiProgress && (
+                        <span style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                            {aiProgress}
+                        </span>
+                    )}
+                    <button
+                        onClick={runAISummary}
+                        disabled={generatingBriefing || aiLoading}
+                        title="Draft Executive Brief (Free)"
+                        style={{
+                            backgroundColor: generatingBriefing ? '#30363d' : '#0ea5e9', // Sky blue for summary
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: '50%',
+                            cursor: (generatingBriefing || aiLoading) ? 'not-allowed' : 'pointer',
+                            transition: 'all 0.2s',
+                            width: '38px',
+                            height: '38px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '18px',
+                            boxShadow: '0 2px 8px rgba(14, 165, 233, 0.4)'
+                        }}
+                    >
+                        {generatingBriefing ? '⏳' : '📝'}
+                    </button>
+                    <button
+                        onClick={runAITagging}
+                        disabled={aiLoading || generatingBriefing}
+                        title="Run AI Sentiment Analysis (Free)"
+                        style={{
+                            backgroundColor: aiLoading ? '#30363d' : '#8957e5',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: '50%',
+                            cursor: aiLoading ? 'not-allowed' : 'pointer',
+                            transition: 'all 0.2s',
+                            width: '38px',
+                            height: '38px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '18px',
+                            boxShadow: '0 2px 8px rgba(137, 87, 229, 0.4)'
+                        }}
+                    >
+                        {aiLoading ? '🧠' : '✨'}
+                    </button>
+                </div>
             </div>
 
             <ol className="news-list">
+                {briefing && (
+                    <li className="news-item" style={{ backgroundColor: 'var(--macro-tag-bg)', border: '1px solid var(--macro-tag-border)', padding: '16px', marginBottom: '16px' }}>
+                        <div className="item-content">
+                            <h3 style={{ fontSize: '14px', marginBottom: '8px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                ✨ AI Executive Briefing
+                            </h3>
+                            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                                {briefing}
+                            </p>
+                        </div>
+                    </li>
+                )}
+
                 {displayedStories.length === 0 && (
                     <li className="news-item">
                         <div className="item-content">
@@ -157,15 +241,12 @@ export default function FeedClient({ initialStories }: { initialStories: Story[]
                 {displayedStories.map((story) => (
                     <li className="news-item" key={story.id}>
                         <div className="item-rank"></div>
-                        <div className="item-vote">▲</div>
                         <div className="item-content">
                             <div>
                                 <a href={story.link} target="_blank" rel="noopener noreferrer" className="item-title">{story.title}</a>
                                 <a href={story.link} target="_blank" rel="noopener noreferrer" className="item-domain">({story.domain})</a>
                             </div>
                             <div className="item-meta">
-                                <span>{story.points} points</span>
-                                <span>•</span>
                                 <span>{story.timeAgo}</span>
                                 <span>•</span>
                                 <span className={`tag ${story.factor}`}>{story.factor.toUpperCase()}</span>
@@ -174,8 +255,6 @@ export default function FeedClient({ initialStories }: { initialStories: Story[]
                                     {story.sentiment === 'bullish' ? '↑ Bullish' : story.sentiment === 'bearish' ? '↓ Bearish' : '→ Neutral'}
                                     {' '}({story.impactLabel})
                                 </span>
-                                <span>•</span>
-                                <a href="#">{story.commentsInt} comments</a>
                             </div>
                         </div>
                     </li>

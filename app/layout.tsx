@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import { Suspense } from 'react';
-import Link from 'next/link';
 import './globals.css';
 import HeaderControls from './HeaderControls';
+import TopNav from './TopNav';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -24,11 +24,9 @@ export default function RootLayout({
           <header className="header">
             <div className="header-content">
               <h1><span className="logo-accent">▲</span> Market Signal</h1>
-              <nav>
-                <Link href="/" className="active">Trending</Link>
-                <Link href="#">Macro Insights</Link>
-                <Link href="#">Micro Catalysts</Link>
-              </nav>
+              <Suspense fallback={<nav><span style={{ color: '#888', fontSize: '13px' }}>Loading...</span></nav>}>
+                <TopNav />
+              </Suspense>
               <Suspense fallback={<div style={{ marginLeft: 'auto', fontSize: '12px', color: '#888' }}>Loading controls...</div>}>
                 <HeaderControls />
               </Suspense>

@@ -1,5 +1,5 @@
 import FeedClient from './FeedClient';
-import { fetchFinanceNews, Country } from '../lib/feed';
+import { fetchFinanceNews, Country, TimeFilter } from '../lib/feed';
 
 // This is required to make Next.js run this component on the server for each request
 // or revalidate at intervals so news is fresh.
@@ -12,11 +12,13 @@ export default async function FeedPage({
 }) {
   const sp = await searchParams;
   const country = (sp?.country as Country) || 'us';
-  const stories = await fetchFinanceNews(country);
+  const time = (sp?.time as TimeFilter) || 'today';
+
+  const stories = await fetchFinanceNews(country, time);
 
   return (
     <>
-      <FeedClient initialStories={stories} />
+      <FeedClient key={`${country}-${time}`} initialStories={stories} />
     </>
   );
 }

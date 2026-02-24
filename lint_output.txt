@@ -1,6 +1,6 @@
 
 D:\_elfor\code\ag-wks\stockmarket-aggregator\app\FeedClient.tsx
-  19:9  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+   20:9  error    Error: Calling setState synchronously within an effect can trigger cascading renders
 
 Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
 * Update external systems with the latest state from React.
@@ -8,15 +8,15 @@ Effects are intended to synchronize state between React and external systems suc
 
 Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
 
-D:\_elfor\code\ag-wks\stockmarket-aggregator\app\FeedClient.tsx:19:9
-  17 |     useEffect(() => {
-  18 |         // Update local state when server data changes (e.g. new country selected)
-> 19 |         setStories(initialStories);
+D:\_elfor\code\ag-wks\stockmarket-aggregator\app\FeedClient.tsx:20:9
+  18 |     useEffect(() => {
+  19 |         // Update local state when server data changes (e.g. new country selected)
+> 20 |         setStories(initialStories);
      |         ^^^^^^^^^^ Avoid calling setState() directly within an effect
-  20 |
-  21 |         // We only initiate the worker on the client side
-  22 |         if (!worker.current) {  react-hooks/set-state-in-effect
-  89:8  warning  React Hook useMemo has an unnecessary dependency: 'timeFilter'. Either exclude it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      react-hooks/exhaustive-deps
+  21 |
+  22 |         // We only initiate the worker on the client side
+  23 |         if (!worker.current) {  react-hooks/set-state-in-effect
+  117:8  warning  React Hook useMemo has an unnecessary dependency: 'timeFilter'. Either exclude it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      react-hooks/exhaustive-deps
 
 D:\_elfor\code\ag-wks\stockmarket-aggregator\app\HeaderControls.tsx
   16:13  error  Error: Calling setState synchronously within an effect can trigger cascading renders
@@ -36,11 +36,8 @@ D:\_elfor\code\ag-wks\stockmarket-aggregator\app\HeaderControls.tsx:16:13
   18 |         } else {
   19 |             document.body.classList.remove('light-mode');  react-hooks/set-state-in-effect
 
-D:\_elfor\code\ag-wks\stockmarket-aggregator\app\layout.tsx
-  27:17  error  Do not use an `<a>` element to navigate to `/`. Use `<Link />` from `next/link` instead. See: https://nextjs.org/docs/messages/no-html-link-for-pages  @next/next/no-html-link-for-pages
-
 D:\_elfor\code\ag-wks\stockmarket-aggregator\lib\feed.ts
   3:6  warning  'TimeFilter' is defined but never used  @typescript-eslint/no-unused-vars
 
-✖ 5 problems (3 errors, 2 warnings)
+✖ 4 problems (2 errors, 2 warnings)
 
