@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import type { Story, Sentiment, TimeFilter } from '../lib/feed';
+import { fetchArticleContent } from './actions';
 
 export default function FeedClient({ initialStories }: { initialStories: Story[] }) {
     const searchParams = useSearchParams();
@@ -16,6 +17,8 @@ export default function FeedClient({ initialStories }: { initialStories: Story[]
     const [aiProgress, setAiProgress] = useState<string>('');
     const [briefing, setBriefing] = useState<string>('');
     const [generatingBriefing, setGeneratingBriefing] = useState<boolean>(false);
+    const [articleSummaries, setArticleSummaries] = useState<Record<string, string>>({});
+    const [loadingArticleSummaries, setLoadingArticleSummaries] = useState<Record<string, boolean>>({});
     const processedCount = useRef<number>(0);
 
     // Create a reference to the worker object.
@@ -101,14 +104,25 @@ export default function FeedClient({ initialStories }: { initialStories: Story[]
                         setAiProgress(`Analyzing Feed... (${processedCount.current}/${initialStories.length})`);
                     }
                 } else if (action === 'summarize') {
-                    setBriefing(summary);
-                    setGeneratingBriefing(false);
-                    setAiProgress('');
+                    if (id) {
+                        setArticleSummaries(prev => ({ ...prev, [id]: summary }));
+                        setLoadingArticleSummaries(prev => ({ ...prev, [id]: false }));
+                    } else {
+                        setBriefing(summary);
+                        setGeneratingBriefing(false);
+                        setAiProgress('');
+                    }
                 }
             } else if (status === 'error') {
                 console.error("AI Error:", e.data.error);
                 if (action === 'classify') setAiLoading(false);
-                if (action === 'summarize') setGeneratingBriefing(false);
+                if (action === 'summarize') {
+                    if (id) {
+                        setLoadingArticleSummaries(prev => ({ ...prev, [id]: false }));
+                    } else {
+                        setGeneratingBriefing(false);
+                    }
+                }
                 setAiProgress('');
             }
         };
@@ -141,6 +155,23 @@ export default function FeedClient({ initialStories }: { initialStories: Story[]
             // We only summarize top 10 items to save memory/speed, and concat their titles
             const contextText = stories.slice(0, 10).map(s => s.title).join(". ");
             worker.current.postMessage({ action: 'summarize', text: contextText });
+        }
+    };
+
+    const summarizeArticle = async (id: string, url: string) => {
+        if (!worker.current) return;
+        setLoadingArticleSummaries(prev => ({ ...prev, [id]: true }));
+        try {
+            const articleText = await fetchArticleContent(url);
+            if (articleText.length < 100) {
+                setArticleSummaries(prev => ({ ...prev, [id]: "Unable to extract enough readable content. This link might be unreadable." }));
+                setLoadingArticleSummaries(prev => ({ ...prev, [id]: false }));
+                return;
+            }
+            worker.current.postMessage({ action: 'summarize', id, text: articleText });
+        } catch (error) {
+            console.error(error);
+            setLoadingArticleSummaries(prev => ({ ...prev, [id]: false }));
         }
     };
 
@@ -255,7 +286,22 @@ export default function FeedClient({ initialStories }: { initialStories: Story[]
                                     {story.sentiment === 'bullish' ? '↑ Bullish' : story.sentiment === 'bearish' ? '↓ Bearish' : '→ Neutral'}
                                     {' '}({story.impactLabel})
                                 </span>
+                                <span>•</span>
+                                <button
+                                    onClick={() => summarizeArticle(story.id, story.link)}
+                                    disabled={loadingArticleSummaries[story.id]}
+                                    style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: loadingArticleSummaries[story.id] ? 'not-allowed' : 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                >
+                                    {loadingArticleSummaries[story.id] ? '⏳ Reading...' : '📝 Summarize'}
+                                </button>
                             </div>
+
+                            {articleSummaries[story.id] && (
+                                <div style={{ marginTop: '12px', padding: '12px', backgroundColor: 'var(--bg-color)', borderRadius: '6px', fontSize: '13px', color: 'var(--text-primary)', borderLeft: '3px solid #0ea5e9' }}>
+                                    <strong style={{ display: 'block', marginBottom: '4px', color: '#0ea5e9' }}>AI Article Summary</strong>
+                                    {articleSummaries[story.id]}
+                                </div>
+                            )}
                         </div>
                     </li>
                 ))}

@@ -59,6 +59,7 @@ self.addEventListener('message', async (event: MessageEvent) => {
             self.postMessage({
                 status: 'complete',
                 action,
+                id,
                 summary: output[0].summary_text
             });
         }
