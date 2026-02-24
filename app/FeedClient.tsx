@@ -164,7 +164,7 @@ export default function FeedClient({ initialStories }: { initialStories: Story[]
         try {
             const articleText = await fetchArticleContent(url);
             if (articleText.length < 100) {
-                setArticleSummaries(prev => ({ ...prev, [id]: "Unable to extract enough readable content. This link might be unreadable." }));
+                setArticleSummaries(prev => ({ ...prev, [id]: "Unable to extract enough readable content. This link might be blocked or require subscription." }));
                 setLoadingArticleSummaries(prev => ({ ...prev, [id]: false }));
                 return;
             }
