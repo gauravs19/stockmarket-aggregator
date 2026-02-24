@@ -104,7 +104,7 @@ export async function fetchFinanceNews(country: Country = 'us'): Promise<Story[]
             const mockComments = Math.floor(Math.random() * 200) + 10;
 
             return {
-                id: item.guid || String(index),
+                id: item.guid ? `${item.guid}-${index}` : String(index),
                 title: item.title || 'Untitled',
                 link: item.link || '#',
                 domain: getDomain(item.link || '#'),

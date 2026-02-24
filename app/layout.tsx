@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import { Suspense } from 'react';
+import Link from 'next/link';
 import './globals.css';
 import HeaderControls from './HeaderControls';
 
@@ -24,9 +25,9 @@ export default function RootLayout({
             <div className="header-content">
               <h1><span className="logo-accent">▲</span> Market Signal</h1>
               <nav>
-                <a href="/" className="active">Trending</a>
-                <a href="#">Macro Insights</a>
-                <a href="#">Micro Catalysts</a>
+                <Link href="/" className="active">Trending</Link>
+                <Link href="#">Macro Insights</Link>
+                <Link href="#">Micro Catalysts</Link>
               </nav>
               <Suspense fallback={<div style={{ marginLeft: 'auto', fontSize: '12px', color: '#888' }}>Loading controls...</div>}>
                 <HeaderControls />
