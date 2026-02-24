@@ -1,11 +1,14 @@
 'use server';
 
-import * as cheerio from 'cheerio';
-
 export async function fetchArticleContent(url: string): Promise<string> {
     try {
+        // News.google.com links are just trackers that redirect to the actual article.
+        // We need to fetch the redirect target first, because Jina might fail on the google jump page.
+        const redirectRes = await fetch(url, { redirect: 'follow' });
+        const finalUrl = redirectRes.url;
+
         // Use Jina Reader to bypass bot protection and return clean markdown
-        const jinaUrl = `https://r.jina.ai/${url}`;
+        const jinaUrl = `https://r.jina.ai/${finalUrl}`;
 
         const response = await fetch(jinaUrl, {
             headers: {
