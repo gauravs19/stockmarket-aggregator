@@ -85,15 +85,17 @@ export type Country = 'us' | 'cn' | 'jp' | 'de' | 'in';
 
 export async function fetchFinanceNews(country: Country = 'us', time: TimeFilter = 'today'): Promise<Story[]> {
     try {
-        let timeQuery = '1d';
-        if (time === 'week') timeQuery = '7d';
-        if (time === 'month') timeQuery = '30d';
+        // We use Bing News Search RSS, which provides direct links (bypassing Google News bot protections)
+        let timeQuery = '';
+        if (time === 'today') timeQuery = '%20%2b24h';
+        if (time === 'week') timeQuery = '%20%2b7d';
+        if (time === 'month') timeQuery = '%20%2b30d';
 
-        let url = `https://news.google.com/rss/search?q=US+economy+finance+market+when:${timeQuery}&hl=en-US&gl=US&ceid=US:en`;
-        if (country === 'cn') url = `https://news.google.com/rss/search?q=china+economy+finance+market+when:${timeQuery}&hl=en-US&gl=US&ceid=US:en`;
-        if (country === 'jp') url = `https://news.google.com/rss/search?q=japan+economy+finance+market+when:${timeQuery}&hl=en-US&gl=US&ceid=US:en`;
-        if (country === 'de') url = `https://news.google.com/rss/search?q=germany+economy+finance+market+when:${timeQuery}&hl=en-US&gl=US&ceid=US:en`;
-        if (country === 'in') url = `https://news.google.com/rss/search?q=india+economy+finance+market+when:${timeQuery}&hl=en-US&gl=US&ceid=US:en`;
+        let url = `https://www.bing.com/news/search?q=US+economy+finance+market${timeQuery}&format=rss&setmkt=en-US`;
+        if (country === 'cn') url = `https://www.bing.com/news/search?q=china+economy+finance+market${timeQuery}&format=rss&setmkt=en-US`;
+        if (country === 'jp') url = `https://www.bing.com/news/search?q=japan+economy+finance+market${timeQuery}&format=rss&setmkt=en-US`;
+        if (country === 'de') url = `https://www.bing.com/news/search?q=germany+economy+finance+market${timeQuery}&format=rss&setmkt=en-US`;
+        if (country === 'in') url = `https://www.bing.com/news/search?q=india+economy+finance+market${timeQuery}&format=rss&setmkt=en-US`;
 
         const feed = await parser.parseURL(url);
 

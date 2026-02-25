@@ -2,19 +2,13 @@
 
 export async function fetchArticleContent(url: string): Promise<string> {
     try {
-        // News.google.com links are just trackers that redirect to the actual article.
-        // We need to fetch the redirect target first, because Jina might fail on the google jump page.
-        const redirectRes = await fetch(url, { redirect: 'follow' });
-        const finalUrl = redirectRes.url;
-
         // Use Jina Reader to bypass bot protection and return clean markdown
-        const jinaUrl = `https://r.jina.ai/${finalUrl}`;
+        const jinaUrl = `https://r.jina.ai/${url}`;
 
         const response = await fetch(jinaUrl, {
             headers: {
                 // Jina allows returning just the cleaned text
                 'Accept': 'text/plain',
-                // Adding an arbitrary API key override if needed later, but it works without one for low volume.
             },
         });
 
