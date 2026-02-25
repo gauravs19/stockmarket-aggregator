@@ -140,8 +140,11 @@ export default function FeedClient({ initialStories }: { initialStories: Story[]
             setAiLoading(true);
             setAiProgress('Waking up AI Engine...');
             processedCount.current = 0;
-            stories.forEach(story => {
-                worker.current?.postMessage({ action: 'classify', id: story.id, text: story.title });
+            stories.forEach((story, index) => {
+                // Add a deliberate 2 second interval delay per item to show changes clearly
+                setTimeout(() => {
+                    worker.current?.postMessage({ action: 'classify', id: story.id, text: story.title });
+                }, index * 2000);
             });
         }
     };
@@ -282,10 +285,16 @@ export default function FeedClient({ initialStories }: { initialStories: Story[]
                                 <span>•</span>
                                 <span className={`tag ${story.factor}`}>{story.factor.toUpperCase()}</span>
                                 <span>•</span>
-                                <span className={`sentiment ${story.sentiment}`}>
-                                    {story.sentiment === 'bullish' ? '↑ Bullish' : story.sentiment === 'bearish' ? '↓ Bearish' : '→ Neutral'}
-                                    {' '}({story.impactLabel})
-                                </span>
+                                {story.sentiment === 'untagged' ? (
+                                    <span className="sentiment neutral" style={{ opacity: 0.6 }}>
+                                        ✧ Awaiting Analysis
+                                    </span>
+                                ) : (
+                                    <span className={`sentiment ${story.sentiment}`}>
+                                        {story.sentiment === 'bullish' ? '↑ Bullish' : story.sentiment === 'bearish' ? '↓ Bearish' : '→ Neutral'}
+                                        {' '}({story.impactLabel})
+                                    </span>
+                                )}
                                 <span>•</span>
                                 <button
                                     onClick={() => summarizeArticle(story.id, story.link)}

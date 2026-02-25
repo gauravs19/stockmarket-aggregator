@@ -2,7 +2,7 @@ import Parser from 'rss-parser';
 
 export type TimeFilter = 'today' | 'week' | 'month';
 export type FactorType = 'macro' | 'micro';
-export type Sentiment = 'bullish' | 'bearish' | 'neutral';
+export type Sentiment = 'bullish' | 'bearish' | 'neutral' | 'untagged';
 
 export interface Story {
     id: string;
@@ -47,38 +47,15 @@ function timeSince(dateString: string) {
 function classifyStory(title: string): { factor: FactorType, sentiment: Sentiment, impactLabel: string } {
     const text = title.toLowerCase();
 
-    // Basic heuristic classification
+    // Only apply basic routing for macro vs micro tag
     const macroKeywords = ['fed', 'inflation', 'cpi', 'rate', 'rates', 'economy', 'gdp', 'job', 'unemployment', 'bank', 'treasury', 'yield', 'macro', 'china', 'global'];
-    const bullishKeywords = ['surge', 'jump', 'rise', 'beat', 'up', 'grow', 'rally', 'high', 'gain', 'buy', 'upgrade', 'record'];
-    const bearishKeywords = ['drop', 'fall', 'miss', 'down', 'shrink', 'plunge', 'low', 'sink', 'sell', 'downgrade', 'fear', 'crash', 'loss'];
 
     let factor: FactorType = 'micro';
-    let sentiment: Sentiment = 'neutral';
-
     if (macroKeywords.some(kw => text.includes(kw))) {
         factor = 'macro';
     }
 
-    const isBullish = bullishKeywords.some(kw => text.includes(kw));
-    const isBearish = bearishKeywords.some(kw => text.includes(kw));
-
-    if (isBullish && !isBearish) sentiment = 'bullish';
-    if (isBearish && !isBullish) sentiment = 'bearish';
-
-    // Generate impact label based on basic rules
-    let impactLabel = 'Market Mover';
-    if (factor === 'macro') {
-        if (sentiment === 'bearish') impactLabel = 'Economic Headwind';
-        if (sentiment === 'bullish') impactLabel = 'Broad Market Catalyst';
-        if (sentiment === 'neutral') impactLabel = 'Macro Indicator';
-    } else {
-        // micro
-        if (sentiment === 'bearish') impactLabel = 'Company Pressure';
-        if (sentiment === 'bullish') impactLabel = 'Sector Upside';
-        if (sentiment === 'neutral') impactLabel = 'Corporate News';
-    }
-
-    return { factor, sentiment, impactLabel };
+    return { factor, sentiment: 'untagged', impactLabel: 'Awaiting Analysis' };
 }
 
 export type Country = 'us' | 'cn' | 'jp' | 'de' | 'in';
