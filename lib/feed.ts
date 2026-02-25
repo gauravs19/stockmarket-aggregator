@@ -87,15 +87,19 @@ export async function fetchFinanceNews(country: Country = 'us', time: TimeFilter
     try {
         // We use Bing News Search RSS, which provides direct links (bypassing Google News bot protections)
         let timeQuery = '';
-        if (time === 'today') timeQuery = '%20%2b24h';
-        if (time === 'week') timeQuery = '%20%2b7d';
-        if (time === 'month') timeQuery = '%20%2b30d';
+        // Bing uses the parameters:
+        // qft=interval="4" (Past 24 hours)
+        // qft=interval="7" (Past 7 days)
+        // qft=interval="8" (Past 30 days)
+        if (time === 'today') timeQuery = '&qft=interval%3D"4"';
+        if (time === 'week') timeQuery = '&qft=interval%3D"7"';
+        if (time === 'month') timeQuery = '&qft=interval%3D"8"';
 
-        let url = `https://www.bing.com/news/search?q=US+economy+finance+market${timeQuery}&format=rss&setmkt=en-US`;
-        if (country === 'cn') url = `https://www.bing.com/news/search?q=china+economy+finance+market${timeQuery}&format=rss&setmkt=en-US`;
-        if (country === 'jp') url = `https://www.bing.com/news/search?q=japan+economy+finance+market${timeQuery}&format=rss&setmkt=en-US`;
-        if (country === 'de') url = `https://www.bing.com/news/search?q=germany+economy+finance+market${timeQuery}&format=rss&setmkt=en-US`;
-        if (country === 'in') url = `https://www.bing.com/news/search?q=india+economy+finance+market${timeQuery}&format=rss&setmkt=en-US`;
+        let url = `https://www.bing.com/news/search?q=US+economy+finance+market&format=rss${timeQuery}&setmkt=en-US`;
+        if (country === 'cn') url = `https://www.bing.com/news/search?q=china+economy+finance+market&format=rss${timeQuery}&setmkt=en-US`;
+        if (country === 'jp') url = `https://www.bing.com/news/search?q=japan+economy+finance+market&format=rss${timeQuery}&setmkt=en-US`;
+        if (country === 'de') url = `https://www.bing.com/news/search?q=germany+economy+finance+market&format=rss${timeQuery}&setmkt=en-US`;
+        if (country === 'in') url = `https://www.bing.com/news/search?q=india+economy+finance+market&format=rss${timeQuery}&setmkt=en-US`;
 
         const feed = await parser.parseURL(url);
 
