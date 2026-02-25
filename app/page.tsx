@@ -8,7 +8,7 @@ export const revalidate = 60; // revalidate every 60 seconds
 export default async function FeedPage({
   searchParams,
 }: {
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }> | { [key: string]: string | string[] | undefined };
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const sp = await searchParams;
   const country = (sp?.country as Country) || 'us';
